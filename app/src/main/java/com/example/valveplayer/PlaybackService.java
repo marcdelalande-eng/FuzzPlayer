@@ -10,6 +10,7 @@ import android.util.Log;
 import androidx.media3.common.MediaItem;
 import androidx.media3.common.MediaMetadata;
 import androidx.media3.common.Player;
+import androidx.media3.common.PlaybackException;
 import androidx.media3.exoplayer.ExoPlayer;
 import androidx.media3.session.MediaSession;
 import androidx.media3.session.MediaSessionService;
@@ -70,6 +71,12 @@ public class PlaybackService extends MediaSessionService {
             }
         }).build();
         player.addListener(new Player.Listener() {
+            @Override public void onIsPlayingChanged(boolean isPlaying) {
+                Log.e("FUZZ_DIAG", "isPlaying=" + isPlaying + ", state=" + player.getPlaybackState());
+            }
+            @Override public void onPlayerError(PlaybackException error) {
+                Log.e("FUZZ_DIAG", "Erreur Media3", error);
+            }
             @Override public void onMediaItemTransition(MediaItem item, int reason) {
                 saveWidgetMetadata();
             }
@@ -156,6 +163,12 @@ public class PlaybackService extends MediaSessionService {
             .putString("widget_title", meta.title == null ? "Titre inconnu" : meta.title.toString())
             .apply();
         PlayerWidgetProvider.updateAll(this);
+    }
+
+    @Override public void onUpdateNotification(MediaSession session, boolean startInForegroundRequired) {
+        Log.e("FUZZ_DIAG", "Notification Media3: foregroundRequired=" + startInForegroundRequired
+                + ", isPlaying=" + player.isPlaying());
+        super.onUpdateNotification(session, startInForegroundRequired);
     }
 
     @Override public void onTaskRemoved(Intent rootIntent) {
