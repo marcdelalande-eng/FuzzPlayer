@@ -126,16 +126,20 @@ public class PlaybackService extends MediaSessionService {
                         MediaMetadata meta = new MediaMetadata.Builder().setTitle(t.title).setArtist(t.artist).setAlbumTitle(t.album).build();
                         items.add(new MediaItem.Builder().setUri(t.uri).setMediaMetadata(meta).build());
                     }
-                    player.setMediaItems(items);
-                    if (Prefs.isResumeLast(this)) {
-                        String last = Prefs.lastUri(this);
-                        if (last != null) for (int i = 0; i < tracks.size(); i++) {
+                    // Capture saved progress BEFORE setMediaItems triggers a media transition callback.
+                    String last = Prefs.isResumeLast(this) ? Prefs.lastUri(this) : null;
+                    long position = Prefs.lastPosition(this);
+                    int resumeIndex = -1;
+                    if (last != null) {
+                        for (int i = 0; i < tracks.size(); i++) {
                             if (last.equals(tracks.get(i).uri.toString())) {
-                                player.seekTo(i, Prefs.lastPosition(this));
+                                resumeIndex = i;
                                 break;
                             }
                         }
                     }
+                    player.setMediaItems(items, resumeIndex >= 0 ? resumeIndex : 0,
+                            resumeIndex >= 0 ? position : 0L);
                     player.prepare();
                 }
                 if (done != null) done.run();
