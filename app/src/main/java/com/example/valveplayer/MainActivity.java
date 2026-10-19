@@ -6,6 +6,12 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.widget.CheckBox;
+import android.widget.RadioButton;
+import android.widget.RadioGroup;
+import android.widget.LinearLayout;
 import android.util.Log;
 import android.content.ComponentName;
 import androidx.media3.session.MediaController;
@@ -31,10 +37,23 @@ public class MainActivity extends Activity {
     private TextView count;
     private ListenableFuture<MediaController> controllerFuture;
     private MediaController mediaController;
+    private VuMeterView vuMeter;
+    private final Handler meterHandler = new Handler(Looper.getMainLooper());
+    private final Runnable meterTick = new Runnable() {
+        @Override public void run() {
+            if (vuMeter != null) {
+                boolean playing = mediaController != null ? mediaController.isPlaying() : Prefs.isPlaying(MainActivity.this);
+                vuMeter.setPlaying(playing);
+            }
+            meterHandler.postDelayed(this, 120);
+        }
+    };
 
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b); setContentView(R.layout.activity_main);
         count = findViewById(R.id.libraryCount);
+        vuMeter = findViewById(R.id.vuMeter);
+        findViewById(R.id.btnOptions).setOnClickListener(v -> showOptions());
         adapter = new AlbumAdapter(this, albums);
         ListView list = findViewById(R.id.listAlbums); list.setAdapter(adapter);
         list.setOnItemClickListener((parent, v, pos, id) -> openAlbum(pos));
@@ -92,6 +111,43 @@ public class MainActivity extends Activity {
         });
     }
 
+    private void showOptions() {
+        int pad = (int) (20 * getResources().getDisplayMetrics().density);
+        LinearLayout content = new LinearLayout(this);
+        content.setOrientation(LinearLayout.VERTICAL);
+        content.setPadding(pad, pad / 2, pad, pad / 2);
+
+        RadioGroup mode = new RadioGroup(this);
+        RadioButton ordered = new RadioButton(this);
+        ordered.setText("Lecture par ordre des pistes");
+        ordered.setId(View.generateViewId());
+        RadioButton shuffled = new RadioButton(this);
+        shuffled.setText("Lecture aléatoire");
+        shuffled.setId(View.generateViewId());
+        mode.addView(ordered);
+        mode.addView(shuffled);
+        mode.check(Prefs.isShuffle(this) ? shuffled.getId() : ordered.getId());
+        content.addView(mode);
+
+        CheckBox resume = new CheckBox(this);
+        resume.setText("Reprendre la dernière lecture");
+        resume.setChecked(Prefs.isResumeLast(this));
+        content.addView(resume);
+
+        new android.app.AlertDialog.Builder(this)
+                .setTitle("Options FuzzPlayer")
+                .setView(content)
+                .setNegativeButton("Annuler", null)
+                .setPositiveButton("Enregistrer", (dialog, which) -> {
+                    boolean shuffle = mode.getCheckedRadioButtonId() == shuffled.getId();
+                    Prefs.setShuffle(this, shuffle);
+                    Prefs.setResumeLast(this, resume.isChecked());
+                    send(PlaybackService.CMD_SET_SHUFFLE, null);
+                    Toast.makeText(this, "Options enregistrées", Toast.LENGTH_SHORT).show();
+                })
+                .show();
+    }
+
     private void chooseFolder() {
         Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE); i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION); startActivityForResult(i, REQ_FOLDER);
     }
@@ -136,11 +192,14 @@ public class MainActivity extends Activity {
     @Override protected void onPause() {
         super.onPause();
         Log.e("FUZZ_DIAG", "MainActivity.onPause");
+        meterHandler.removeCallbacks(meterTick);
     }
 
     @Override protected void onResume() {
         super.onResume();
         Log.e("FUZZ_DIAG", "MainActivity.onResume");
+        meterHandler.removeCallbacks(meterTick);
+        meterHandler.post(meterTick);
     }
 
     @Override protected void onDestroy() { executor.shutdownNow(); super.onDestroy(); }
