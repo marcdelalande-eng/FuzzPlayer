@@ -37,6 +37,14 @@ public class PlaybackService extends MediaSessionService {
     private final Handler main = new Handler(Looper.getMainLooper());
     private List<Track> tracks = new ArrayList<>();
     private boolean loading;
+    private final Runnable widgetVuTick = new Runnable() {
+        @Override public void run() {
+            if (player != null && player.isPlaying()) {
+                PlayerWidgetProvider.updateVu(PlaybackService.this, true);
+                main.postDelayed(this, 2000);
+            }
+        }
+    };
     private final Runnable positionSaver = new Runnable() {
         @Override public void run() {
             savePlaybackPosition();
@@ -83,6 +91,9 @@ public class PlaybackService extends MediaSessionService {
             @Override public void onIsPlayingChanged(boolean isPlaying) {
                 Log.e("FUZZ_DIAG", "isPlaying=" + isPlaying + ", state=" + player.getPlaybackState());
                 Prefs.setPlaying(PlaybackService.this, isPlaying);
+                main.removeCallbacks(widgetVuTick);
+                PlayerWidgetProvider.updateVu(PlaybackService.this, isPlaying);
+                if (isPlaying) main.postDelayed(widgetVuTick, 2000);
                 savePlaybackPosition();
             }
             @Override public void onPlayerError(PlaybackException error) {
@@ -214,6 +225,7 @@ public class PlaybackService extends MediaSessionService {
         Log.e("FUZZ_DIAG", "PlaybackService.onDestroy appelé");
         main.removeCallbacks(dispatchSingle);
         main.removeCallbacks(positionSaver);
+        main.removeCallbacks(widgetVuTick);
         savePlaybackPosition();
         Prefs.setPlaying(this, false);
         mediaSession.release(); player.release(); executor.shutdownNow(); super.onDestroy();
