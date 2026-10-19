@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
+import android.util.Log;
 import android.provider.Settings;
 import android.view.View;
 import android.widget.ArrayAdapter;
@@ -96,5 +97,20 @@ public class MainActivity extends Activity {
             Prefs.addFolder(this, uri.toString()); scan();
         }
     }
+    @Override protected void onPause() {
+        super.onPause();
+        Log.e("FUZZ_DIAG", "MainActivity.onPause");
+    }
+
+    @Override protected void onStop() {
+        super.onStop();
+        Log.e("FUZZ_DIAG", "MainActivity.onStop");
+    }
+
+    @Override protected void onResume() {
+        super.onResume();
+        Log.e("FUZZ_DIAG", "MainActivity.onResume");
+    }
+
     @Override protected void onDestroy() { executor.shutdownNow(); super.onDestroy(); }
 }
