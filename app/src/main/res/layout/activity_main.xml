@@ -15,6 +15,7 @@
             android:text="Aucun titre" tools:text="Riders on the Storm" android:textColor="@color/amp_cream" android:textSize="20sp" android:textStyle="bold" />
         <TextView android:id="@+id/artistNow" android:layout_width="match_parent" android:layout_height="wrap_content"
             android:text="—" tools:text="The Doors • L.A. Woman" android:textColor="@color/amp_dim" android:layout_marginTop="4dp" />
+        <com.example.valveplayer.VuMeterView android:id="@+id/vuMeter" android:layout_width="match_parent" android:layout_height="110dp" android:layout_marginTop="8dp" />
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center" android:layout_marginTop="14dp">
             <ImageButton android:id="@+id/btnPrevAlbum" android:layout_width="0dp" android:layout_height="56dp" android:layout_weight="1"  android:src="@drawable/button_album_prev" android:contentDescription="Album précédent" android:background="@android:color/transparent" android:scaleType="fitCenter" android:padding="1dp" />
             <ImageButton android:id="@+id/btnPrev" android:layout_width="0dp" android:layout_height="56dp" android:layout_weight="1" android:layout_marginStart="6dp"  android:src="@drawable/button_track_prev" android:contentDescription="Piste précédente" android:background="@android:color/transparent" android:scaleType="fitCenter" android:padding="1dp" />
@@ -29,6 +30,8 @@
         <Button android:id="@+id/btnFolder" android:layout_width="0dp" android:layout_height="52dp" android:layout_weight="1" android:layout_marginStart="8dp" android:text="Ajouter dossier" android:textColor="@color/amp_cream" android:background="@drawable/amp_button" />
         <Button android:id="@+id/btnSettings" android:layout_width="0dp" android:layout_height="52dp" android:layout_weight="1" android:layout_marginStart="8dp" android:text="Voiture" android:textColor="@color/amp_gold" android:background="@drawable/amp_button" />
     </LinearLayout>
+
+    <Button android:id="@+id/btnOptions" android:layout_width="match_parent" android:layout_height="42dp" android:layout_marginTop="6dp" android:text="Options ⚙" android:textColor="@color/amp_gold" android:background="@drawable/amp_button" />
 
     <TextView android:id="@+id/libraryCount" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Bibliothèque" android:textColor="@color/amp_dim" android:layout_marginTop="14dp" android:layout_marginBottom="6dp" />
     <ListView android:id="@+id/listAlbums" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"
