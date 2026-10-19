@@ -3,9 +3,16 @@
     android:layout_width="match_parent" android:layout_height="match_parent"
     android:orientation="vertical" android:padding="5dp" android:gravity="center"
     android:background="@drawable/widget_bg">
-    <!-- Ces trois TextView sont modifiables visuellement dans Android Studio. -->
+    <!-- Informations et petit VU-mètre circulaire : RemoteViews-compatible. -->
+    <LinearLayout android:layout_width="match_parent" android:layout_height="0dp"
+        android:layout_weight="1.1" android:orientation="horizontal"
+        android:gravity="center_vertical">
+        <ImageView android:id="@+id/wVuMeter" android:layout_width="54dp"
+            android:layout_height="54dp" android:layout_marginStart="4dp"
+            android:layout_marginEnd="4dp" android:scaleType="fitCenter"
+            android:contentDescription="VU-mètre circulaire" />
     <LinearLayout android:id="@+id/wMetadata" android:layout_width="match_parent"
-        android:layout_height="0dp" android:layout_weight="1.1"
+        android:layout_height="match_parent" android:layout_weight="1"
         android:orientation="vertical" android:gravity="center"
 android:textAlignment="center"
         android:paddingStart="8dp" android:paddingEnd="8dp">
@@ -30,6 +37,7 @@ android:textAlignment="center"
             android:textColor="#FFEBBA" android:gravity="center"
 android:textAlignment="center"
             tools:text="Titre : Riders on the Storm" />
+    </LinearLayout>
     </LinearLayout>
     <LinearLayout android:layout_width="match_parent" android:layout_height="0dp"
         android:layout_weight="1" android:orientation="horizontal" android:gravity="center_vertical">
