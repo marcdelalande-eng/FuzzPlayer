@@ -7,6 +7,10 @@ import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
+import android.content.ComponentName;
+import androidx.media3.session.MediaController;
+import androidx.media3.session.SessionToken;
+import com.google.common.util.concurrent.ListenableFuture;
 import android.provider.Settings;
 import android.view.View;
 import android.widget.ArrayAdapter;
@@ -25,6 +29,8 @@ public class MainActivity extends Activity {
     private AlbumAdapter adapter;
     private final List<AlbumAdapter.Album> albums = new ArrayList<>();
     private TextView count;
+    private ListenableFuture<MediaController> controllerFuture;
+    private MediaController mediaController;
 
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b); setContentView(R.layout.activity_main);
@@ -97,14 +103,39 @@ public class MainActivity extends Activity {
             Prefs.addFolder(this, uri.toString()); scan();
         }
     }
-    @Override protected void onPause() {
-        super.onPause();
-        Log.e("FUZZ_DIAG", "MainActivity.onPause");
+    @Override protected void onStart() {
+        super.onStart();
+        SessionToken token = new SessionToken(this, new ComponentName(this, PlaybackService.class));
+        controllerFuture = new MediaController.Builder(this, token).buildAsync();
+        final ListenableFuture<MediaController> future = controllerFuture;
+        future.addListener(() -> {
+            try {
+                MediaController connected = future.get();
+                if (controllerFuture == future && !isFinishing()) {
+                    mediaController = connected;
+                    Log.e("FUZZ_DIAG", "MediaController connecté");
+                } else {
+                    connected.release();
+                }
+            } catch (Exception e) {
+                Log.e("FUZZ_DIAG", "Connexion MediaController impossible", e);
+            }
+        }, getMainExecutor());
     }
 
     @Override protected void onStop() {
-        super.onStop();
         Log.e("FUZZ_DIAG", "MainActivity.onStop");
+        if (controllerFuture != null) {
+            MediaController.releaseFuture(controllerFuture);
+            controllerFuture = null;
+            mediaController = null;
+        }
+        super.onStop();
+    }
+
+    @Override protected void onPause() {
+        super.onPause();
+        Log.e("FUZZ_DIAG", "MainActivity.onPause");
     }
 
     @Override protected void onResume() {
