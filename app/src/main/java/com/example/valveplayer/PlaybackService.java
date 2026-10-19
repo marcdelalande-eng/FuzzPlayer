@@ -29,6 +29,7 @@ public class PlaybackService extends MediaSessionService {
     public static final String CMD_PREV_ALBUM = "prev_album";
     public static final String CMD_NEXT_ALBUM = "next_album";
     public static final String CMD_PLAY_URI = "play_uri";
+    public static final String CMD_SET_SHUFFLE = "set_shuffle";
 
     private ExoPlayer player;
     private MediaSession mediaSession;
@@ -36,6 +37,12 @@ public class PlaybackService extends MediaSessionService {
     private final Handler main = new Handler(Looper.getMainLooper());
     private List<Track> tracks = new ArrayList<>();
     private boolean loading;
+    private final Runnable positionSaver = new Runnable() {
+        @Override public void run() {
+            savePlaybackPosition();
+            main.postDelayed(this, 5000);
+        }
+    };
     private static final long DOUBLE_PRESS_MS = 550;
     private int pendingDirection = 0;
     private long lastPress = 0;
@@ -47,6 +54,8 @@ public class PlaybackService extends MediaSessionService {
     @Override public void onCreate() {
         super.onCreate();
         player = new ExoPlayer.Builder(this).build();
+        player.setShuffleModeEnabled(Prefs.isShuffle(this));
+        main.postDelayed(positionSaver, 5000);
         mediaSession = new MediaSession.Builder(this, player).setCallback(new MediaSession.Callback() {
             @Override @UnstableApi public boolean onMediaButtonEvent(MediaSession session, MediaSession.ControllerInfo controller, Intent intent) {
                 KeyEvent key = intent.getParcelableExtra(Intent.EXTRA_KEY_EVENT, KeyEvent.class);
@@ -73,12 +82,15 @@ public class PlaybackService extends MediaSessionService {
         player.addListener(new Player.Listener() {
             @Override public void onIsPlayingChanged(boolean isPlaying) {
                 Log.e("FUZZ_DIAG", "isPlaying=" + isPlaying + ", state=" + player.getPlaybackState());
+                Prefs.setPlaying(PlaybackService.this, isPlaying);
+                savePlaybackPosition();
             }
             @Override public void onPlayerError(PlaybackException error) {
                 Log.e("FUZZ_DIAG", "Erreur Media3", error);
             }
             @Override public void onMediaItemTransition(MediaItem item, int reason) {
                 saveWidgetMetadata();
+                savePlaybackPosition();
             }
             @Override public void onMediaMetadataChanged(MediaMetadata metadata) {
                 saveWidgetMetadata();
@@ -115,6 +127,15 @@ public class PlaybackService extends MediaSessionService {
                         items.add(new MediaItem.Builder().setUri(t.uri).setMediaMetadata(meta).build());
                     }
                     player.setMediaItems(items);
+                    if (Prefs.isResumeLast(this)) {
+                        String last = Prefs.lastUri(this);
+                        if (last != null) for (int i = 0; i < tracks.size(); i++) {
+                            if (last.equals(tracks.get(i).uri.toString())) {
+                                player.seekTo(i, Prefs.lastPosition(this));
+                                break;
+                            }
+                        }
+                    }
                     player.prepare();
                 }
                 if (done != null) done.run();
@@ -131,6 +152,7 @@ public class PlaybackService extends MediaSessionService {
             case CMD_PREV_ALBUM -> jumpAlbum(-1);
             case CMD_NEXT_ALBUM -> jumpAlbum(1);
             case CMD_PLAY_URI -> playUri(uri);
+            case CMD_SET_SHUFFLE -> player.setShuffleModeEnabled(Prefs.isShuffle(this));
         }
         PlayerWidgetProvider.updateAll(this);
     }
@@ -152,6 +174,14 @@ public class PlaybackService extends MediaSessionService {
             String prev = tracks.get(first - 1).album; int target = first - 1;
             while (target > 0 && tracks.get(target - 1).album.equals(prev)) target--;
             player.seekTo(target, 0); if (player.getPlayWhenReady()) player.play();
+        }
+    }
+
+    private void savePlaybackPosition() {
+        if (player == null || tracks.isEmpty()) return;
+        int index = player.getCurrentMediaItemIndex();
+        if (index >= 0 && index < tracks.size()) {
+            Prefs.savePosition(this, tracks.get(index).uri.toString(), player.getCurrentPosition());
         }
     }
 
@@ -178,6 +208,10 @@ public class PlaybackService extends MediaSessionService {
 
     @Override public void onDestroy() {
         Log.e("FUZZ_DIAG", "PlaybackService.onDestroy appelé");
-        main.removeCallbacks(dispatchSingle); mediaSession.release(); player.release(); executor.shutdownNow(); super.onDestroy();
+        main.removeCallbacks(dispatchSingle);
+        main.removeCallbacks(positionSaver);
+        savePlaybackPosition();
+        Prefs.setPlaying(this, false);
+        mediaSession.release(); player.release(); executor.shutdownNow(); super.onDestroy();
     }
 }
