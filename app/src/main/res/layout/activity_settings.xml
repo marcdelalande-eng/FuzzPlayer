@@ -1,0 +1,11 @@
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:background="@color/amp_black">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="18dp">
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="MODE VOITURE" android:textColor="@color/amp_gold" android:textSize="24sp" android:textStyle="bold" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Sélectionne les périphériques Bluetooth qui correspondent à la voiture." android:textColor="@color/amp_dim" android:layout_marginTop="6dp" />
+        <Switch android:id="@+id/switchAuto" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Activation automatique à la connexion" android:textColor="@color/amp_cream" android:layout_marginTop="18dp" />
+        <Switch android:id="@+id/switchManualCar" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Mode voiture maintenant" android:textColor="@color/amp_cream" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Périphériques appairés" android:textColor="@color/amp_gold" android:textStyle="bold" android:layout_marginTop="22dp" />
+        <LinearLayout android:id="@+id/deviceContainer" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:layout_marginTop="6dp" />
+        <Button android:id="@+id/btnBack" android:layout_width="match_parent" android:layout_height="56dp" android:text="Retour" android:textColor="@color/amp_cream" android:background="@drawable/amp_button" android:layout_marginTop="24dp" />
+    </LinearLayout>
+</ScrollView>

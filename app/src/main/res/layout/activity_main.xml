@@ -1,0 +1,36 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="vertical" android:padding="16dp" android:background="@color/amp_black">
+
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:text="FuzzPlayer" android:textColor="@color/amp_gold" android:textSize="26sp"
+        android:textStyle="bold" android:letterSpacing="0.12" />
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:text="Lecteur local • Android 15" android:textColor="@color/amp_dim" android:textSize="13sp" android:layout_marginBottom="14dp" />
+
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical"
+        android:padding="16dp" android:background="@drawable/panel_bg">
+        <TextView android:id="@+id/titleNow" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="Aucun titre" tools:text="Riders on the Storm" android:textColor="@color/amp_cream" android:textSize="20sp" android:textStyle="bold" />
+        <TextView android:id="@+id/artistNow" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="—" tools:text="The Doors • L.A. Woman" android:textColor="@color/amp_dim" android:layout_marginTop="4dp" />
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center" android:layout_marginTop="14dp">
+            <ImageButton android:id="@+id/btnPrevAlbum" android:layout_width="0dp" android:layout_height="56dp" android:layout_weight="1"  android:src="@drawable/button_album_prev" android:contentDescription="Album précédent" android:background="@android:color/transparent" android:scaleType="fitCenter" android:padding="1dp" />
+            <ImageButton android:id="@+id/btnPrev" android:layout_width="0dp" android:layout_height="56dp" android:layout_weight="1" android:layout_marginStart="6dp"  android:src="@drawable/button_track_prev" android:contentDescription="Piste précédente" android:background="@android:color/transparent" android:scaleType="fitCenter" android:padding="1dp" />
+            <ImageButton android:id="@+id/btnPlay" android:layout_width="0dp" android:layout_height="56dp" android:layout_weight="1.2" android:layout_marginStart="6dp"  android:src="@drawable/button_play_pause" android:contentDescription="Lecture et pause" android:background="@android:color/transparent" android:scaleType="fitCenter" android:padding="1dp" />
+            <ImageButton android:id="@+id/btnNext" android:layout_width="0dp" android:layout_height="56dp" android:layout_weight="1" android:layout_marginStart="6dp"  android:src="@drawable/button_track_next" android:contentDescription="Piste suivante" android:background="@android:color/transparent" android:scaleType="fitCenter" android:padding="1dp" />
+            <ImageButton android:id="@+id/btnNextAlbum" android:layout_width="0dp" android:layout_height="56dp" android:layout_weight="1" android:layout_marginStart="6dp"  android:src="@drawable/button_album_next" android:contentDescription="Album suivant" android:background="@android:color/transparent" android:scaleType="fitCenter" android:padding="1dp" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:layout_marginTop="12dp">
+        <Button android:id="@+id/btnScan" android:layout_width="0dp" android:layout_height="52dp" android:layout_weight="1" android:text="Scanner" android:textColor="@color/amp_cream" android:background="@drawable/amp_button" />
+        <Button android:id="@+id/btnFolder" android:layout_width="0dp" android:layout_height="52dp" android:layout_weight="1" android:layout_marginStart="8dp" android:text="Ajouter dossier" android:textColor="@color/amp_cream" android:background="@drawable/amp_button" />
+        <Button android:id="@+id/btnSettings" android:layout_width="0dp" android:layout_height="52dp" android:layout_weight="1" android:layout_marginStart="8dp" android:text="Voiture" android:textColor="@color/amp_gold" android:background="@drawable/amp_button" />
+    </LinearLayout>
+
+    <TextView android:id="@+id/libraryCount" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Bibliothèque" android:textColor="@color/amp_dim" android:layout_marginTop="14dp" android:layout_marginBottom="6dp" />
+    <ListView android:id="@+id/listAlbums" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"
+        android:divider="#3A3428" android:dividerHeight="1dp" android:background="@color/amp_panel" />
+</LinearLayout>

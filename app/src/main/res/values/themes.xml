@@ -1,0 +1,10 @@
+<resources>
+    <style name="Theme.ValvePlayer" parent="android:style/Theme.Material.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:statusBarColor">@color/amp_black</item>
+        <item name="android:navigationBarColor">@color/amp_black</item>
+        <item name="android:windowBackground">@color/amp_black</item>
+        <item name="android:colorAccent">@color/amp_gold</item>
+    </style>
+</resources>

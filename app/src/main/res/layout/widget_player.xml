@@ -1,0 +1,9 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:id="@+id/widgetRoot"
+    android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="horizontal" android:gravity="center_vertical"
+    android:padding="5dp" android:background="@drawable/widget_bg">
+    <ImageView android:id="@+id/wPrevAlbum" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1"  android:src="@drawable/button_album_prev" android:scaleType="fitCenter" android:contentDescription="Album précédent" android:padding="1dp" />
+    <ImageView android:id="@+id/wPrev" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1"  android:src="@drawable/button_track_prev" android:scaleType="fitCenter" android:contentDescription="Piste précédente" android:padding="1dp" />
+    <ImageView android:id="@+id/wPlay" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1.2"  android:src="@drawable/button_play_pause" android:scaleType="fitCenter" android:contentDescription="Lecture et pause" android:padding="1dp" />
+    <ImageView android:id="@+id/wNext" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1"  android:src="@drawable/button_track_next" android:scaleType="fitCenter" android:contentDescription="Piste suivante" android:padding="1dp" />
+    <ImageView android:id="@+id/wNextAlbum" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1"  android:src="@drawable/button_album_next" android:scaleType="fitCenter" android:contentDescription="Album suivant" android:padding="1dp" />
+</LinearLayout>

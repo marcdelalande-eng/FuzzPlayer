@@ -1,0 +1,4 @@
+<resources><string name="app_name">FuzzPlayer</string>
+<string name="widget_description">Contrôles audio FuzzPlayer 4×1</string>
+<string name="widget_large_description">Lecteur audio Fuzzplayer 4×2 : interprète, album, titre et commandes</string>
+</resources>
