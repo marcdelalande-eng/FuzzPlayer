@@ -6,6 +6,7 @@ import android.view.KeyEvent;
 import androidx.media3.common.util.UnstableApi;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Log;
 import androidx.media3.common.MediaItem;
 import androidx.media3.common.MediaMetadata;
 import androidx.media3.common.Player;
@@ -82,6 +83,8 @@ public class PlaybackService extends MediaSessionService {
     @Override public MediaSession onGetSession(MediaSession.ControllerInfo controllerInfo) { return mediaSession; }
 
     @Override public int onStartCommand(Intent intent, int flags, int startId) {
+        Log.e("FUZZ_DIAG", "Service démarré, startId=" + startId
+                + ", action=" + (intent == null ? "null" : intent.getAction()));
         if (intent != null && ACTION_COMMAND.equals(intent.getAction())) {
             String command = intent.getStringExtra(EXTRA_COMMAND);
             String uri = intent.getStringExtra(EXTRA_URI);
@@ -155,7 +158,13 @@ public class PlaybackService extends MediaSessionService {
         PlayerWidgetProvider.updateAll(this);
     }
 
+    @Override public void onTaskRemoved(Intent rootIntent) {
+        Log.e("FUZZ_DIAG", "Service : onTaskRemoved");
+        super.onTaskRemoved(rootIntent);
+    }
+
     @Override public void onDestroy() {
+        Log.e("FUZZ_DIAG", "PlaybackService.onDestroy appelé");
         main.removeCallbacks(dispatchSingle); mediaSession.release(); player.release(); executor.shutdownNow(); super.onDestroy();
     }
 }
