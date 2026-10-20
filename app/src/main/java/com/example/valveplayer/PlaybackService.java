@@ -30,6 +30,7 @@ public class PlaybackService extends MediaSessionService {
     public static final String CMD_NEXT_ALBUM = "next_album";
     public static final String CMD_PLAY_URI = "play_uri";
     public static final String CMD_SET_SHUFFLE = "set_shuffle";
+    public static final String CMD_RESCAN = "rescan";
 
     private ExoPlayer player;
     private MediaSession mediaSession;
@@ -118,9 +119,45 @@ public class PlaybackService extends MediaSessionService {
         if (intent != null && ACTION_COMMAND.equals(intent.getAction())) {
             String command = intent.getStringExtra(EXTRA_COMMAND);
             String uri = intent.getStringExtra(EXTRA_URI);
-            ensureLibrary(() -> execute(command, uri));
+            if (CMD_RESCAN.equals(command)) reloadLibrary();
+            else ensureLibrary(() -> execute(command, uri));
         }
         return super.onStartCommand(intent, flags, startId);
+    }
+
+    private void reloadLibrary() {
+        if (loading) { main.postDelayed(this::reloadLibrary, 300); return; }
+        loading = true;
+        String oldUri = null;
+        int index = player.getCurrentMediaItemIndex();
+        if (index >= 0 && index < tracks.size()) oldUri = tracks.get(index).uri.toString();
+        final String currentUri = oldUri;
+        final long oldPosition = Math.max(0, player.getCurrentPosition());
+        final boolean wasPlaying = player.getPlayWhenReady();
+        executor.execute(() -> {
+            List<Track> loaded = LibraryScanner.scan(this);
+            main.post(() -> {
+                tracks = loaded;
+                List<MediaItem> items = new ArrayList<>();
+                int resume = -1;
+                for (int i = 0; i < loaded.size(); i++) {
+                    Track t = loaded.get(i);
+                    MediaMetadata metadata = new MediaMetadata.Builder()
+                            .setTitle(t.title).setArtist(t.artist).setAlbumTitle(t.album).build();
+                    items.add(new MediaItem.Builder().setUri(t.uri).setMediaMetadata(metadata).build());
+                    if (currentUri != null && currentUri.equals(t.uri.toString())) resume = i;
+                }
+                if (items.isEmpty()) {
+                    player.clearMediaItems();
+                } else {
+                    player.setMediaItems(items, resume >= 0 ? resume : 0, resume >= 0 ? oldPosition : 0);
+                    player.prepare();
+                    if (wasPlaying) player.play();
+                }
+                loading = false;
+                PlayerWidgetProvider.updateAll(this);
+            });
+        });
     }
 
     private void ensureLibrary(Runnable done) {
