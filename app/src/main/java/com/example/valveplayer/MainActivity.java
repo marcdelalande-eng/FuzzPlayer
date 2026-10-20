@@ -1,9 +1,7 @@
 package com.example.valveplayer;
 
-import android.Manifest;
 import android.app.Activity;
 import android.content.Intent;
-import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
@@ -17,9 +15,7 @@ import android.content.ComponentName;
 import androidx.media3.session.MediaController;
 import androidx.media3.session.SessionToken;
 import com.google.common.util.concurrent.ListenableFuture;
-import android.provider.Settings;
 import android.view.View;
-import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -29,7 +25,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class MainActivity extends Activity {
-    private static final int REQ_PERMS = 7, REQ_FOLDER = 8;
+    private static final int REQ_FOLDER = 8;
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final List<Track> tracks = new ArrayList<>();
     private AlbumAdapter adapter;
@@ -61,19 +57,10 @@ public class MainActivity extends Activity {
         findViewById(R.id.btnFolder).setOnClickListener(v -> chooseFolder());
         findViewById(R.id.btnSettings).setOnClickListener(v -> startActivity(new Intent(this, CarSettingsActivity.class)));
         bind(R.id.btnPrevAlbum, PlaybackService.CMD_PREV_ALBUM); bind(R.id.btnPrev, PlaybackService.CMD_PREV); bind(R.id.btnPlay, PlaybackService.CMD_PLAY_PAUSE); bind(R.id.btnNext, PlaybackService.CMD_NEXT); bind(R.id.btnNextAlbum, PlaybackService.CMD_NEXT_ALBUM);
-        requestPermissionsIfNeeded();
-    }
-
-    private void requestPermissionsIfNeeded() {
-        List<String> ask = new ArrayList<>();
-        if (checkSelfPermission(Manifest.permission.READ_MEDIA_AUDIO) != PackageManager.PERMISSION_GRANTED) ask.add(Manifest.permission.READ_MEDIA_AUDIO);
-        if (checkSelfPermission(Manifest.permission.READ_MEDIA_IMAGES) != PackageManager.PERMISSION_GRANTED) ask.add(Manifest.permission.READ_MEDIA_IMAGES);
-        if (checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) ask.add(Manifest.permission.BLUETOOTH_CONNECT);
-        if (ask.isEmpty()) scan(); else requestPermissions(ask.toArray(new String[0]), REQ_PERMS);
-    }
-
-    @Override public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults); if (requestCode == REQ_PERMS) scan();
+        if (Prefs.folders(this).isEmpty()) {
+            count.setText("Choisissez un ou plusieurs dossiers de musique.");
+            chooseFolder();
+        } else scan();
     }
 
     private void bind(int id, String cmd) { findViewById(id).setOnClickListener(v -> send(cmd, null)); }
@@ -93,7 +80,12 @@ public class MainActivity extends Activity {
                 .setNegativeButton("Fermer", null).show();
     }
     private void scan() {
-        count.setText("Scan en cours…");
+        if (Prefs.folders(this).isEmpty()) {
+            count.setText("Aucun dossier choisi. Sélectionnez un dossier de musique.");
+            chooseFolder();
+            return;
+        }
+        count.setText("Scan des dossiers sélectionnés et sous-dossiers…");
         executor.execute(() -> {
             List<Track> found = LibraryScanner.scan(this);
             runOnUiThread(() -> {
@@ -106,7 +98,7 @@ public class MainActivity extends Activity {
                     albums.add(new AlbumAdapter.Album(first.album,first.artist,cover,i,end-i));i=end;
                 }
                 adapter.notifyDataSetChanged();count.setText(albums.size()+" album(s) • "+found.size()+" titre(s)");
-                if (found.isEmpty() && checkSelfPermission(Manifest.permission.READ_MEDIA_AUDIO) != PackageManager.PERMISSION_GRANTED) Toast.makeText(this, "Autorise l'accès aux fichiers audio dans les réglages Android.", Toast.LENGTH_LONG).show();
+                if (found.isEmpty()) Toast.makeText(this, "Aucun fichier audio trouvé dans les dossiers sélectionnés.", Toast.LENGTH_LONG).show();
             });
         });
     }
@@ -149,14 +141,18 @@ public class MainActivity extends Activity {
     }
 
     private void chooseFolder() {
-        Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE); i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION); startActivityForResult(i, REQ_FOLDER);
+        Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
+        i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+        startActivityForResult(i, REQ_FOLDER);
     }
     @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == REQ_FOLDER && resultCode == RESULT_OK && data != null && data.getData() != null) {
             Uri uri = data.getData(); int flags = data.getFlags() & (Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
             try { getContentResolver().takePersistableUriPermission(uri, flags & Intent.FLAG_GRANT_READ_URI_PERMISSION); } catch (Exception ignored) { }
-            Prefs.addFolder(this, uri.toString()); scan();
+            Prefs.addFolder(this, uri.toString());
+            scan();
+            send(PlaybackService.CMD_RESCAN, null);
         }
     }
     @Override protected void onStart() {
