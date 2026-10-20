@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 set -e
-VER=9.4.1
+VER=9.6.0
 BASE="${GRADLE_USER_HOME:-$HOME/.gradle}/manual-wrapper/gradle-$VER"
 BIN="$BASE/gradle-$VER/bin/gradle"
 if [ ! -x "$BIN" ]; then
