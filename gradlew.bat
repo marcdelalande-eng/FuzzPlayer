@@ -1,5 +1,5 @@
 @echo off
-set VER=9.4.1
+set VER=9.6.0
 set BASE=%USERPROFILE%\.gradle\manual-wrapper\gradle-%VER%
 set BIN=%BASE%\gradle-%VER%\bin\gradle.bat
 if not exist "%BIN%" (
