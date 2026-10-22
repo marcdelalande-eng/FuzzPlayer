@@ -4,6 +4,8 @@ import android.app.Activity;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import java.io.FileInputStream;
+import java.io.OutputStream;
 import android.os.Handler;
 import android.os.Looper;
 import android.widget.CheckBox;
@@ -29,7 +31,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class MainActivity extends Activity {
-    private static final int REQ_FOLDER = 8;
+    private static final int REQ_FOLDER = 8, REQ_EXPORT_LOG = 9;
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final List<Track> tracks = new ArrayList<>();
     private AlbumAdapter adapter;
@@ -54,7 +56,10 @@ public class MainActivity extends Activity {
     };
 
     @Override protected void onCreate(Bundle b) {
-        super.onCreate(b); setContentView(R.layout.activity_main);
+        super.onCreate(b);
+        Diagnostics.install(this);
+        Diagnostics.log("ACTIVITY", "onCreate");
+        setContentView(R.layout.activity_main);
         View root = findViewById(R.id.mainRoot);
         final int baseLeft = root.getPaddingLeft(), baseTop = root.getPaddingTop();
         final int baseRight = root.getPaddingRight(), baseBottom = root.getPaddingBottom();
@@ -113,6 +118,7 @@ public class MainActivity extends Activity {
         }
         count.setText("Scan des dossiers sélectionnés et sous-dossiers…");
         executor.execute(() -> {
+            Diagnostics.log("SCAN", "Started");
             List<Track> found = LibraryScanner.scan(this);
             runOnUiThread(() -> {
                 tracks.clear(); tracks.addAll(found); albums.clear();
@@ -124,6 +130,7 @@ public class MainActivity extends Activity {
                     albums.add(new AlbumAdapter.Album(first.album,first.artist,cover,i,end-i));i=end;
                 }
                 adapter.notifyDataSetChanged();count.setText(albums.size()+" album(s) • "+found.size()+" titre(s)");
+                Diagnostics.log("SCAN", "albums=" + albums.size() + ", tracks=" + found.size());
                 if (found.isEmpty()) Toast.makeText(this, "Aucun fichier audio trouvé dans les dossiers sélectionnés.", Toast.LENGTH_LONG).show();
             });
         });
@@ -175,6 +182,10 @@ public class MainActivity extends Activity {
         carButton.setText("Voiture / Bluetooth");
         content.addView(carButton);
 
+        android.widget.Button logButton = new android.widget.Button(this);
+        logButton.setText("Exporter le journal de diagnostic");
+        content.addView(logButton);
+
         android.widget.ScrollView scroll = new android.widget.ScrollView(this);
         scroll.addView(content);
         android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(this)
@@ -203,6 +214,10 @@ public class MainActivity extends Activity {
             dialog.dismiss();
             startActivity(new Intent(this, CarSettingsActivity.class));
         });
+        logButton.setOnClickListener(v -> {
+            dialog.dismiss();
+            exportLog();
+        });
         dialog.show();
     }
 
@@ -212,6 +227,15 @@ public class MainActivity extends Activity {
         send(PlaybackService.CMD_SET_SHUFFLE, null);
     }
 
+    private void exportLog() {
+        Diagnostics.log("USER", "Export log requested");
+        Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("text/plain");
+        intent.putExtra(Intent.EXTRA_TITLE, "FuzzPlayer-diagnostic.txt");
+        startActivityForResult(intent, REQ_EXPORT_LOG);
+    }
+
     private void chooseFolder() {
         Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
         i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
@@ -219,6 +243,23 @@ public class MainActivity extends Activity {
     }
     @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQ_EXPORT_LOG && resultCode == RESULT_OK && data != null && data.getData() != null) {
+            Uri destination = data.getData();
+            executor.execute(() -> {
+                try (FileInputStream input = new FileInputStream(Diagnostics.getLogFile(this));
+                     OutputStream output = getContentResolver().openOutputStream(destination, "w")) {
+                    if (output == null) throw new java.io.IOException("Cannot open selected destination");
+                    byte[] buffer = new byte[8192];
+                    int n;
+                    while ((n = input.read(buffer)) != -1) output.write(buffer, 0, n);
+                    runOnUiThread(() -> Toast.makeText(this, "Journal exporté", Toast.LENGTH_LONG).show());
+                } catch (Exception e) {
+                    Diagnostics.log("EXPORT", "Failed to export log", e);
+                    runOnUiThread(() -> Toast.makeText(this, "Export impossible : " + e.getMessage(), Toast.LENGTH_LONG).show());
+                }
+            });
+            return;
+        }
         if (requestCode == REQ_FOLDER && resultCode == RESULT_OK && data != null && data.getData() != null) {
             Uri uri = data.getData(); int flags = data.getFlags() & (Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
             try { getContentResolver().takePersistableUriPermission(uri, flags & Intent.FLAG_GRANT_READ_URI_PERMISSION); } catch (Exception ignored) { }
@@ -239,6 +280,7 @@ public class MainActivity extends Activity {
                     mediaController = connected;
                     connected.addListener(metadataListener);
                     refreshNowPlaying();
+                    Diagnostics.log("CONTROLLER", "Connected");
                     Log.e("FUZZ_DIAG", "MediaController connecté");
                 } else {
                     connected.release();
@@ -250,6 +292,7 @@ public class MainActivity extends Activity {
     }
 
     @Override protected void onStop() {
+        Diagnostics.log("ACTIVITY", "onStop");
         Log.e("FUZZ_DIAG", "MainActivity.onStop");
         if (controllerFuture != null) {
             if (mediaController != null) mediaController.removeListener(metadataListener);
@@ -262,12 +305,14 @@ public class MainActivity extends Activity {
 
     @Override protected void onPause() {
         super.onPause();
+        Diagnostics.log("ACTIVITY", "onPause");
         Log.e("FUZZ_DIAG", "MainActivity.onPause");
         meterHandler.removeCallbacks(meterTick);
     }
 
     @Override protected void onResume() {
         super.onResume();
+        Diagnostics.log("ACTIVITY", "onResume");
         Log.e("FUZZ_DIAG", "MainActivity.onResume");
         meterHandler.removeCallbacks(meterTick);
         meterHandler.post(meterTick);
