@@ -53,9 +53,6 @@ public class MainActivity extends Activity {
         adapter = new AlbumAdapter(this, albums);
         ListView list = findViewById(R.id.listAlbums); list.setAdapter(adapter);
         list.setOnItemClickListener((parent, v, pos, id) -> openAlbum(pos));
-        findViewById(R.id.btnScan).setOnClickListener(v -> scan());
-        findViewById(R.id.btnFolder).setOnClickListener(v -> chooseFolder());
-        findViewById(R.id.btnSettings).setOnClickListener(v -> startActivity(new Intent(this, CarSettingsActivity.class)));
         bind(R.id.btnPrevAlbum, PlaybackService.CMD_PREV_ALBUM); bind(R.id.btnPrev, PlaybackService.CMD_PREV); bind(R.id.btnPlay, PlaybackService.CMD_PLAY_PAUSE); bind(R.id.btnNext, PlaybackService.CMD_NEXT); bind(R.id.btnNextAlbum, PlaybackService.CMD_NEXT_ALBUM);
         if (Prefs.folders(this).isEmpty()) {
             count.setText("Choisissez un ou plusieurs dossiers de musique.");
@@ -104,14 +101,19 @@ public class MainActivity extends Activity {
     }
 
     private void showOptions() {
-        int pad = (int) (20 * getResources().getDisplayMetrics().density);
+        int pad = (int) (18 * getResources().getDisplayMetrics().density);
         LinearLayout content = new LinearLayout(this);
         content.setOrientation(LinearLayout.VERTICAL);
-        content.setPadding(pad, pad / 2, pad, pad / 2);
+        content.setPadding(pad, pad / 2, pad, pad, pad / 2);
+
+        TextView reading = new TextView(this);
+        reading.setText("Mode de lecture");
+        reading.setTextSize(18f);
+        content.addView(reading);
 
         RadioGroup mode = new RadioGroup(this);
         RadioButton ordered = new RadioButton(this);
-        ordered.setText("Lecture par ordre des pistes");
+        ordered.setText("Ordre des pistes");
         ordered.setId(View.generateViewId());
         RadioButton shuffled = new RadioButton(this);
         shuffled.setText("Lecture aléatoire");
@@ -126,18 +128,59 @@ public class MainActivity extends Activity {
         resume.setChecked(Prefs.isResumeLast(this));
         content.addView(resume);
 
-        new android.app.AlertDialog.Builder(this)
+        TextView library = new TextView(this);
+        library.setText("Bibliothèque");
+        library.setTextSize(18f);
+        library.setPadding(0, pad / 2, 0, 0);
+        content.addView(library);
+
+        android.widget.Button scanButton = new android.widget.Button(this);
+        scanButton.setText("Scanner les dossiers");
+        content.addView(scanButton);
+
+        android.widget.Button folderButton = new android.widget.Button(this);
+        folderButton.setText("Ajouter un dossier");
+        content.addView(folderButton);
+
+        android.widget.Button carButton = new android.widget.Button(this);
+        carButton.setText("Voiture / Bluetooth");
+        content.addView(carButton);
+
+        android.widget.ScrollView scroll = new android.widget.ScrollView(this);
+        scroll.addView(content);
+        android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(this)
                 .setTitle("Options FuzzPlayer")
-                .setView(content)
-                .setNegativeButton("Annuler", null)
-                .setPositiveButton("Enregistrer", (dialog, which) -> {
-                    boolean shuffle = mode.getCheckedRadioButtonId() == shuffled.getId();
-                    Prefs.setShuffle(this, shuffle);
+                .setView(scroll)
+                .setNegativeButton("Fermer", null)
+                .setPositiveButton("Enregistrer", (d, which) -> {
+                    Prefs.setShuffle(this, mode.getCheckedRadioButtonId() == shuffled.getId());
                     Prefs.setResumeLast(this, resume.isChecked());
                     send(PlaybackService.CMD_SET_SHUFFLE, null);
                     Toast.makeText(this, "Options enregistrées", Toast.LENGTH_SHORT).show();
-                })
-                .show();
+                }).create();
+
+        scanButton.setOnClickListener(v -> {
+            saveOptions(mode, shuffled.getId(), resume);
+            dialog.dismiss();
+            scan();
+        });
+        folderButton.setOnClickListener(v -> {
+            saveOptions(mode, shuffled.getId(), resume);
+            dialog.dismiss();
+            chooseFolder();
+        });
+        carButton.setOnClickListener(v -> {
+            saveOptions(mode, shuffled.getId(), resume);
+            dialog.dismiss();
+            startActivity(new Intent(this, CarSettingsActivity.class));
+        });
+        dialog.show();
+    }
+
+    private void saveOptions(RadioGroup mode, int shuffleId, CheckBox resume) {
+        Prefs.setShuffle(this, mode.getCheckedRadioButtonId() == shuffleId);
+        Prefs.setResumeLast(this, resume.isChecked());
+        send(PlaybackService.CMD_SET_SHUFFLE, null);
     }
 
     private void chooseFolder() {
