@@ -16,6 +16,10 @@ import androidx.media3.session.MediaController;
 import androidx.media3.session.SessionToken;
 import com.google.common.util.concurrent.ListenableFuture;
 import android.view.View;
+import android.view.WindowInsets;
+import androidx.media3.common.MediaItem;
+import androidx.media3.common.MediaMetadata;
+import androidx.media3.common.Player;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -34,6 +38,10 @@ public class MainActivity extends Activity {
     private ListenableFuture<MediaController> controllerFuture;
     private MediaController mediaController;
     private VuMeterView vuMeter;
+    private final Player.Listener metadataListener = new Player.Listener() {
+        @Override public void onMediaMetadataChanged(MediaMetadata metadata) { refreshNowPlaying(); }
+        @Override public void onMediaItemTransition(MediaItem item, int reason) { refreshNowPlaying(); }
+    };
     private final Handler meterHandler = new Handler(Looper.getMainLooper());
     private final Runnable meterTick = new Runnable() {
         @Override public void run() {
@@ -47,6 +55,16 @@ public class MainActivity extends Activity {
 
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b); setContentView(R.layout.activity_main);
+        View root = findViewById(R.id.mainRoot);
+        final int baseLeft = root.getPaddingLeft(), baseTop = root.getPaddingTop();
+        final int baseRight = root.getPaddingRight(), baseBottom = root.getPaddingBottom();
+        root.setOnApplyWindowInsetsListener((view, insets) -> {
+            android.graphics.Insets bars = insets.getInsets(WindowInsets.Type.systemBars() | WindowInsets.Type.displayCutout());
+            view.setPadding(baseLeft + bars.left, baseTop + bars.top,
+                    baseRight + bars.right, baseBottom + bars.bottom);
+            return insets;
+        });
+        root.requestApplyInsets();
         count = findViewById(R.id.libraryCount);
         vuMeter = findViewById(R.id.vuMeter);
         findViewById(R.id.btnOptions).setOnClickListener(v -> showOptions());
@@ -58,6 +76,17 @@ public class MainActivity extends Activity {
             count.setText("Choisissez un ou plusieurs dossiers de musique.");
             chooseFolder();
         } else scan();
+    }
+
+    private void refreshNowPlaying() {
+        if (mediaController == null) return;
+        MediaMetadata meta = mediaController.getMediaMetadata();
+        TextView title = findViewById(R.id.titleNow);
+        TextView artist = findViewById(R.id.artistNow);
+        title.setText(meta.title == null || meta.title.length() == 0 ? "Aucun titre" : meta.title);
+        String who = meta.artist == null ? "" : meta.artist.toString();
+        String album = meta.albumTitle == null ? "" : meta.albumTitle.toString();
+        artist.setText(who.isEmpty() ? album : album.isEmpty() ? who : who + " • " + album);
     }
 
     private void bind(int id, String cmd) { findViewById(id).setOnClickListener(v -> send(cmd, null)); }
@@ -208,6 +237,8 @@ public class MainActivity extends Activity {
                 MediaController connected = future.get();
                 if (controllerFuture == future && !isFinishing()) {
                     mediaController = connected;
+                    connected.addListener(metadataListener);
+                    refreshNowPlaying();
                     Log.e("FUZZ_DIAG", "MediaController connecté");
                 } else {
                     connected.release();
@@ -221,6 +252,7 @@ public class MainActivity extends Activity {
     @Override protected void onStop() {
         Log.e("FUZZ_DIAG", "MainActivity.onStop");
         if (controllerFuture != null) {
+            if (mediaController != null) mediaController.removeListener(metadataListener);
             MediaController.releaseFuture(controllerFuture);
             controllerFuture = null;
             mediaController = null;
