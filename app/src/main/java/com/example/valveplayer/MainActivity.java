@@ -104,7 +104,7 @@ public class MainActivity extends Activity {
         int pad = (int) (18 * getResources().getDisplayMetrics().density);
         LinearLayout content = new LinearLayout(this);
         content.setOrientation(LinearLayout.VERTICAL);
-        content.setPadding(pad, pad / 2, pad, pad, pad / 2);
+        content.setPadding(pad, pad / 2, pad, pad / 2);
 
         TextView reading = new TextView(this);
         reading.setText("Mode de lecture");
