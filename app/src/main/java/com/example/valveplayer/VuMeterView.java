@@ -8,7 +8,6 @@ import android.graphics.RectF;
 import android.graphics.Typeface;
 import android.util.AttributeSet;
 import android.view.View;
-import java.io.IOException;
 import java.util.Random;
 
 /** A 60s/70s-inspired decorative amplifier gauge. The needle is not true audio metering. */
@@ -25,13 +24,8 @@ public class VuMeterView extends View {
     public VuMeterView(Context context, AttributeSet attrs, int style) { super(context, attrs, style); init(context); }
 
     private void init(Context context) {
-        // Optional: install a licensed Brush Script TTF at app/src/main/assets/brush_script.ttf.
-        // On devices without that asset, Android's cursive family is used.
-        try {
-            logoFont = Typeface.createFromAsset(context.getAssets(), "brush_script.ttf");
-        } catch (RuntimeException ignored) {
-            logoFont = Typeface.create("cursive", Typeface.NORMAL);
-        }
+        // Android's built-in cursive face: no external font file or license needed.
+        logoFont = Typeface.create("cursive", Typeface.BOLD_ITALIC);
     }
 
     public void setPlaying(boolean active) {
