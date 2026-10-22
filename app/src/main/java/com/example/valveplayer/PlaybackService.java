@@ -62,6 +62,8 @@ public class PlaybackService extends MediaSessionService {
 
     @Override public void onCreate() {
         super.onCreate();
+        Diagnostics.install(this);
+        Diagnostics.log("SERVICE", "onCreate");
         player = new ExoPlayer.Builder(this).build();
         player.setShuffleModeEnabled(Prefs.isShuffle(this));
         main.postDelayed(positionSaver, 5000);
@@ -90,6 +92,7 @@ public class PlaybackService extends MediaSessionService {
         }).build();
         player.addListener(new Player.Listener() {
             @Override public void onIsPlayingChanged(boolean isPlaying) {
+                Diagnostics.log("PLAYER", "isPlaying=" + isPlaying + ", state=" + player.getPlaybackState());
                 Log.e("FUZZ_DIAG", "isPlaying=" + isPlaying + ", state=" + player.getPlaybackState());
                 Prefs.setPlaying(PlaybackService.this, isPlaying);
                 main.removeCallbacks(widgetVuTick);
@@ -98,6 +101,7 @@ public class PlaybackService extends MediaSessionService {
                 savePlaybackPosition();
             }
             @Override public void onPlayerError(PlaybackException error) {
+                Diagnostics.log("PLAYER", "Media3 error", error);
                 Log.e("FUZZ_DIAG", "Erreur Media3", error);
             }
             @Override public void onMediaItemTransition(MediaItem item, int reason) {
@@ -114,6 +118,7 @@ public class PlaybackService extends MediaSessionService {
     @Override public MediaSession onGetSession(MediaSession.ControllerInfo controllerInfo) { return mediaSession; }
 
     @Override public int onStartCommand(Intent intent, int flags, int startId) {
+        Diagnostics.log("SERVICE", "onStartCommand startId=" + startId + ", action=" + (intent == null ? "null" : intent.getAction()));
         Log.e("FUZZ_DIAG", "Service démarré, startId=" + startId
                 + ", action=" + (intent == null ? "null" : intent.getAction()));
         if (intent != null && ACTION_COMMAND.equals(intent.getAction())) {
@@ -254,11 +259,13 @@ public class PlaybackService extends MediaSessionService {
     }
 
     @Override public void onTaskRemoved(Intent rootIntent) {
+        Diagnostics.log("SERVICE", "onTaskRemoved");
         Log.e("FUZZ_DIAG", "Service : onTaskRemoved");
         super.onTaskRemoved(rootIntent);
     }
 
     @Override public void onDestroy() {
+        Diagnostics.log("SERVICE", "onDestroy");
         Log.e("FUZZ_DIAG", "PlaybackService.onDestroy appelé");
         main.removeCallbacks(dispatchSingle);
         main.removeCallbacks(positionSaver);
