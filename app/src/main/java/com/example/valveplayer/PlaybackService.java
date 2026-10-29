@@ -140,7 +140,8 @@ public class PlaybackService extends MediaSessionService {
         final long oldPosition = Math.max(0, player.getCurrentPosition());
         final boolean wasPlaying = player.getPlayWhenReady();
         executor.execute(() -> {
-            List<Track> loaded = LibraryScanner.scan(this);
+            List<Track> loaded = LibraryStore.load(this);
+            Diagnostics.log("LIBRARY", "Loaded saved snapshot: " + loaded.size() + " tracks");
             main.post(() -> {
                 tracks = loaded;
                 List<MediaItem> items = new ArrayList<>();
@@ -170,7 +171,7 @@ public class PlaybackService extends MediaSessionService {
         if (loading) { if (done != null) main.postDelayed(() -> ensureLibrary(done), 150); return; }
         loading = true;
         executor.execute(() -> {
-            List<Track> loaded = LibraryScanner.scan(this);
+            List<Track> loaded = LibraryStore.load(this);
             main.post(() -> {
                 tracks = loaded; loading = false;
                 if (player.getMediaItemCount() == 0 && !tracks.isEmpty()) {
