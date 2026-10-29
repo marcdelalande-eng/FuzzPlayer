@@ -77,10 +77,7 @@ public class MainActivity extends Activity {
         ListView list = findViewById(R.id.listAlbums); list.setAdapter(adapter);
         list.setOnItemClickListener((parent, v, pos, id) -> openAlbum(pos));
         bind(R.id.btnPrevAlbum, PlaybackService.CMD_PREV_ALBUM); bind(R.id.btnPrev, PlaybackService.CMD_PREV); bind(R.id.btnPlay, PlaybackService.CMD_PLAY_PAUSE); bind(R.id.btnNext, PlaybackService.CMD_NEXT); bind(R.id.btnNextAlbum, PlaybackService.CMD_NEXT_ALBUM);
-        if (Prefs.folders(this).isEmpty()) {
-            count.setText("Choisissez un ou plusieurs dossiers de musique.");
-            chooseFolder();
-        } else scan();
+        loadSavedLibrary();
     }
 
     private void refreshNowPlaying() {
@@ -110,29 +107,65 @@ public class MainActivity extends Activity {
                 .setPositiveButton("Lire l'album", (dialog, which) -> playTrack(album.firstTrack))
                 .setNegativeButton("Fermer", null).show();
     }
+    private void displayLibrary(List<Track> found) {
+        tracks.clear();
+        tracks.addAll(found);
+        albums.clear();
+        for (int i = 0; i < found.size();) {
+            Track first = found.get(i);
+            int end = i + 1;
+            while (end < found.size() && found.get(end).album.equals(first.album)) end++;
+            Uri cover = null;
+            for (int k = i; k < end; k++) {
+                if (found.get(k).coverUri != null) { cover = found.get(k).coverUri; break; }
+            }
+            albums.add(new AlbumAdapter.Album(first.album, first.artist, cover, i, end - i));
+            i = end;
+        }
+        adapter.notifyDataSetChanged();
+        count.setText(albums.size() + " album(s) • " + found.size() + " titre(s)");
+    }
+
+    private void loadSavedLibrary() {
+        count.setText("Chargement de la bibliothèque enregistrée…");
+        executor.execute(() -> {
+            List<Track> saved = LibraryStore.load(this);
+            boolean exists = LibraryStore.exists(this);
+            runOnUiThread(() -> {
+                displayLibrary(saved);
+                if (!exists) count.setText("Bibliothèque vide. Choisissez des dossiers, puis lancez Scanner dans Options.");
+                Diagnostics.log("LIBRARY", "Loaded " + saved.size() + " saved tracks");
+            });
+        });
+    }
+
     private void scan() {
         if (Prefs.folders(this).isEmpty()) {
-            count.setText("Aucun dossier choisi. Sélectionnez un dossier de musique.");
-            chooseFolder();
+            Toast.makeText(this, "Ajoutez d'abord un dossier dans Options.", Toast.LENGTH_LONG).show();
             return;
         }
         count.setText("Scan des dossiers sélectionnés et sous-dossiers…");
         executor.execute(() -> {
-            Diagnostics.log("SCAN", "Started");
-            List<Track> found = LibraryScanner.scan(this);
-            runOnUiThread(() -> {
-                tracks.clear(); tracks.addAll(found); albums.clear();
-                for(int i=0; i<found.size();) {
-                    Track first=found.get(i); int end=i+1;
-                    while(end<found.size() && found.get(end).album.equals(first.album)) end++;
-                    android.net.Uri cover=null;
-                    for(int k=i;k<end;k++) if(found.get(k).coverUri!=null) {cover=found.get(k).coverUri;break;}
-                    albums.add(new AlbumAdapter.Album(first.album,first.artist,cover,i,end-i));i=end;
-                }
-                adapter.notifyDataSetChanged();count.setText(albums.size()+" album(s) • "+found.size()+" titre(s)");
-                Diagnostics.log("SCAN", "albums=" + albums.size() + ", tracks=" + found.size());
-                if (found.isEmpty()) Toast.makeText(this, "Aucun fichier audio trouvé dans les dossiers sélectionnés.", Toast.LENGTH_LONG).show();
-            });
+            Diagnostics.log("SCAN", "Explicit user scan started");
+            try {
+                List<Track> found = LibraryScanner.scan(this);
+                // The new scan replaces the previous snapshot, including when empty.
+                boolean saved = LibraryStore.save(this, found);
+                runOnUiThread(() -> {
+                    if (!saved) {
+                        count.setText("Erreur d'enregistrement : ancienne bibliothèque conservée.");
+                        Toast.makeText(this, "Impossible d'enregistrer le nouveau scan.", Toast.LENGTH_LONG).show();
+                        return;
+                    }
+                    displayLibrary(found);
+                    Diagnostics.log("SCAN", "Saved " + found.size() + " tracks");
+                    send(PlaybackService.CMD_RESCAN, null);
+                    if (found.isEmpty()) Toast.makeText(this, "Aucun fichier audio trouvé.", Toast.LENGTH_LONG).show();
+                });
+            } catch (Exception e) {
+                Diagnostics.log("SCAN", "Scan failed; previous library preserved", e);
+                runOnUiThread(() -> count.setText("Échec du scan : ancienne bibliothèque conservée."));
+            }
         });
     }
 
@@ -264,8 +297,7 @@ public class MainActivity extends Activity {
             Uri uri = data.getData(); int flags = data.getFlags() & (Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
             try { getContentResolver().takePersistableUriPermission(uri, flags & Intent.FLAG_GRANT_READ_URI_PERMISSION); } catch (Exception ignored) { }
             Prefs.addFolder(this, uri.toString());
-            scan();
-            send(PlaybackService.CMD_RESCAN, null);
+            Toast.makeText(this, "Dossier ajouté. Lancez Scanner depuis Options pour actualiser la bibliothèque.", Toast.LENGTH_LONG).show();
         }
     }
     @Override protected void onStart() {
