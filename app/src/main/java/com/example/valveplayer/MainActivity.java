@@ -211,6 +211,10 @@ public class MainActivity extends Activity {
         folderButton.setText("Ajouter un dossier");
         content.addView(folderButton);
 
+        android.widget.Button manageFolders = new android.widget.Button(this);
+        manageFolders.setText("Voir / retirer les dossiers");
+        content.addView(manageFolders);
+
         android.widget.Button carButton = new android.widget.Button(this);
         carButton.setText("Voiture / Bluetooth");
         content.addView(carButton);
@@ -242,6 +246,10 @@ public class MainActivity extends Activity {
             dialog.dismiss();
             chooseFolder();
         });
+        manageFolders.setOnClickListener(v -> {
+            dialog.dismiss();
+            showFolders();
+        });
         carButton.setOnClickListener(v -> {
             saveOptions(mode, shuffled.getId(), resume);
             dialog.dismiss();
@@ -258,6 +266,39 @@ public class MainActivity extends Activity {
         Prefs.setShuffle(this, mode.getCheckedRadioButtonId() == shuffleId);
         Prefs.setResumeLast(this, resume.isChecked());
         send(PlaybackService.CMD_SET_SHUFFLE, null);
+    }
+
+    private void showFolders() {
+        java.util.List<String> folders = new java.util.ArrayList<>(Prefs.folders(this));
+        java.util.Collections.sort(folders);
+        if (folders.isEmpty()) {
+            new android.app.AlertDialog.Builder(this).setTitle("Dossiers à scanner")
+                    .setMessage("Aucun dossier sélectionné.")
+                    .setPositiveButton("Ajouter", (d, w) -> chooseFolder())
+                    .setNegativeButton("Fermer", null).show();
+            return;
+        }
+        String[] names = new String[folders.size()];
+        for (int i = 0; i < folders.size(); i++) {
+            Uri uri = Uri.parse(folders.get(i));
+            String id = android.provider.DocumentsContract.getTreeDocumentId(uri);
+            names[i] = id == null ? folders.get(i) : id;
+        }
+        new android.app.AlertDialog.Builder(this).setTitle("Dossiers à scanner")
+                .setItems(names, (d, index) -> {
+                    String value = folders.get(index);
+                    new android.app.AlertDialog.Builder(this)
+                            .setTitle("Retirer ce dossier ?")
+                            .setMessage(names[index] + "\n\nLes morceaux déjà enregistrés resteront disponibles jusqu'au prochain scan.")
+                            .setNegativeButton("Annuler", (x, y) -> showFolders())
+                            .setPositiveButton("Retirer", (x, y) -> {
+                                Prefs.removeFolder(this, value);
+                                Diagnostics.log("FOLDER", "Removed folder from future scans");
+                                showFolders();
+                            }).show();
+                })
+                .setPositiveButton("Ajouter", (d, w) -> chooseFolder())
+                .setNegativeButton("Fermer", null).show();
     }
 
     private void exportLog() {
