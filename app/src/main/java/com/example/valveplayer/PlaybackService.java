@@ -31,6 +31,8 @@ public class PlaybackService extends MediaSessionService {
     public static final String CMD_PLAY_URI = "play_uri";
     public static final String CMD_SET_SHUFFLE = "set_shuffle";
     public static final String CMD_RESCAN = "rescan";
+    public static final String CMD_BT_CONNECTED = "bt_connected";
+    public static final String CMD_BT_DISCONNECTED = "bt_disconnected";
 
     private ExoPlayer player;
     private MediaSession mediaSession;
@@ -124,7 +126,13 @@ public class PlaybackService extends MediaSessionService {
         if (intent != null && ACTION_COMMAND.equals(intent.getAction())) {
             String command = intent.getStringExtra(EXTRA_COMMAND);
             String uri = intent.getStringExtra(EXTRA_URI);
-            if (CMD_RESCAN.equals(command)) reloadLibrary();
+            if (CMD_BT_DISCONNECTED.equals(command)) {
+                Diagnostics.log("BLUETOOTH", "Selected device lost: pausing playback");
+                player.pause();
+            } else if (CMD_BT_CONNECTED.equals(command)) {
+                Diagnostics.log("BLUETOOTH", "Selected device connected: auto play requested");
+                ensureLibrary(() -> { if (!tracks.isEmpty()) player.play(); });
+            } else if (CMD_RESCAN.equals(command)) reloadLibrary();
             else ensureLibrary(() -> execute(command, uri));
         }
         return super.onStartCommand(intent, flags, startId);
