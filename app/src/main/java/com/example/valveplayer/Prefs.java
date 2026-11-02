@@ -17,6 +17,7 @@ public final class Prefs {
     public static void setCarDevices(Context c, Set<String> devices) { get(c).edit().putStringSet("car_devices", new HashSet<>(devices)).apply(); }
     public static Set<String> folders(Context c) { return new HashSet<>(get(c).getStringSet("folders", new HashSet<>())); }
     public static void addFolder(Context c, String uri) { Set<String> s = folders(c); s.add(uri); get(c).edit().putStringSet("folders", s).apply(); }
+    public static void removeFolder(Context c, String uri) { Set<String> s = folders(c); s.remove(uri); get(c).edit().putStringSet("folders", s).apply(); }
     public static boolean isShuffle(Context c) { return get(c).getBoolean("shuffle_mode", false); }
     public static void setShuffle(Context c, boolean v) { get(c).edit().putBoolean("shuffle_mode", v).apply(); }
     public static boolean isResumeLast(Context c) { return get(c).getBoolean("resume_last", true); }
