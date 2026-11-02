@@ -27,7 +27,14 @@ public class CarSettingsActivity extends Activity {
         auto.setOnCheckedChangeListener((v, checked) -> Prefs.setAutoCar(this, checked));
         manual.setOnCheckedChangeListener((v, checked) -> { Prefs.setCarMode(this, checked); PlayerWidgetProvider.updateAll(this); });
         findViewById(R.id.btnBack).setOnClickListener(v -> finish());
-        populate();
+        if (checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{Manifest.permission.BLUETOOTH_CONNECT}, 42);
+        } else populate();
+    }
+
+    @Override public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == 42) populate();
     }
 
     private void populate() {
