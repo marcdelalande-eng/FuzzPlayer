@@ -329,7 +329,7 @@ public class TagEditorActivity extends Activity {
     }
 
     @Override protected void onDestroy() {
-        worker.shutdownNow();
+        worker.shutdown(); // Never interrupt a file write mid-stream.
         super.onDestroy();
     }
 }
