@@ -1,6 +1,7 @@
 package com.example.valveplayer;
 
 import android.content.Context;
+import android.media.MediaMetadataRetriever;
 import android.net.Uri;
 import androidx.documentfile.provider.DocumentFile;
 import java.util.ArrayList;
@@ -19,7 +20,7 @@ public final class LibraryScanner {
         for (String tree : Prefs.folders(context)) {
             try {
                 DocumentFile root = DocumentFile.fromTreeUri(context, Uri.parse(tree));
-                if (root != null && root.exists()) scanFolder(root, result, seen, 0);
+                if (root != null && root.exists()) scanFolder(context, root, result, seen, 0);
             } catch (Exception ignored) { }
         }
         result.sort(Comparator.comparing((Track t) -> safe(t.album), String.CASE_INSENSITIVE_ORDER)
@@ -34,17 +35,37 @@ public final class LibraryScanner {
         return n.matches("(folder|cover|front|album|artwork|albumart)\\.(jpg|jpeg|png|webp)");
     }
 
-    private static void scanFolder(DocumentFile folder, List<Track> out, Set<String> seen, int depth) {
+    private static void scanFolder(Context context, DocumentFile folder, List<Track> out, Set<String> seen, int depth) {
         if (depth > 64) return; // Safety limit against malformed folder providers.
         DocumentFile[] entries = folder.listFiles();
         Uri cover = null;
         for (DocumentFile f : entries) if (f.isFile() && isCover(f.getName())) { cover = f.getUri(); break; }
         for (DocumentFile f : entries) {
-            if (f.isDirectory()) scanFolder(f, out, seen, depth + 1);
+            if (f.isDirectory()) scanFolder(context, f, out, seen, depth + 1);
             else if (f.isFile() && supported(f.getName(), f.getType())) {
                 Uri uri = f.getUri(); if (!seen.add(uri.toString())) continue;
                 String album = folder.getName() == null ? "Dossier" : folder.getName();
-                out.add(new Track(uri, stripExt(f.getName()), "Artiste inconnu", album, 0, 0, cover));
+                String title = stripExt(f.getName());
+                String artist = "Artiste inconnu";
+                long duration = 0;
+                int trackNo = 0;
+                try (MediaMetadataRetriever retriever = new MediaMetadataRetriever()) {
+                    retriever.setDataSource(context, uri);
+                    String val = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE);
+                    if (val != null && !val.isBlank()) title = val;
+                    val = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST);
+                    if (val != null && !val.isBlank()) artist = val;
+                    val = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM);
+                    if (val != null && !val.isBlank()) album = val;
+                    val = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
+                    if (val != null) duration = Long.parseLong(val);
+                    val = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_CD_TRACK_NUMBER);
+                    if (val != null) {
+                        String n = val.split("/")[0];
+                        try { trackNo = Integer.parseInt(n); } catch (NumberFormatException ignored) { }
+                    }
+                } catch (Exception ignored) { /* Keep filename and folder as fallback. */ }
+                out.add(new Track(uri, title, artist, album, duration, trackNo, cover));
             }
         }
     }
