@@ -72,7 +72,18 @@ public class MainActivity extends Activity {
         root.requestApplyInsets();
         count = findViewById(R.id.libraryCount);
         vuMeter = findViewById(R.id.vuMeter);
-        findViewById(R.id.btnOptions).setOnClickListener(v -> showOptions());
+        View drawer = findViewById(R.id.sideDrawer);
+        findViewById(R.id.btnMenu).setOnClickListener(v -> drawer.setVisibility(View.VISIBLE));
+        findViewById(R.id.menuScrim).setOnClickListener(v -> drawer.setVisibility(View.GONE));
+        findViewById(R.id.btnCloseMenu).setOnClickListener(v -> drawer.setVisibility(View.GONE));
+        findViewById(R.id.btnOptions).setOnClickListener(v -> {
+            drawer.setVisibility(View.GONE);
+            showOptions();
+        });
+        findViewById(R.id.btnEditTags).setOnClickListener(v -> {
+            drawer.setVisibility(View.GONE);
+            startActivity(new Intent(this, TagEditorActivity.class));
+        });
         adapter = new AlbumAdapter(this, albums);
         ListView list = findViewById(R.id.listAlbums); list.setAdapter(adapter);
         list.setOnItemClickListener((parent, v, pos, id) -> openAlbum(pos));
@@ -174,6 +185,15 @@ public class MainActivity extends Activity {
         LinearLayout content = new LinearLayout(this);
         content.setOrientation(LinearLayout.VERTICAL);
         content.setPadding(pad, pad / 2, pad, pad / 2);
+
+        TextView version = new TextView(this);
+        try {
+            android.content.pm.PackageInfo pkg = getPackageManager().getPackageInfo(getPackageName(), 0);
+            version.setText("Version " + pkg.versionName);
+        } catch (Exception ignored) { version.setText("Version indisponible"); }
+        version.setTextColor(getColor(R.color.amp_dim));
+        version.setPadding(0, 0, 0, pad);
+        content.addView(version);
 
         TextView reading = new TextView(this);
         reading.setText("Mode de lecture");
@@ -312,7 +332,7 @@ public class MainActivity extends Activity {
 
     private void chooseFolder() {
         Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
-        i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+        i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
         startActivityForResult(i, REQ_FOLDER);
     }
     @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
@@ -336,7 +356,7 @@ public class MainActivity extends Activity {
         }
         if (requestCode == REQ_FOLDER && resultCode == RESULT_OK && data != null && data.getData() != null) {
             Uri uri = data.getData(); int flags = data.getFlags() & (Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
-            try { getContentResolver().takePersistableUriPermission(uri, flags & Intent.FLAG_GRANT_READ_URI_PERMISSION); } catch (Exception ignored) { }
+            try { getContentResolver().takePersistableUriPermission(uri, flags); } catch (Exception ignored) { }
             Prefs.addFolder(this, uri.toString());
             Toast.makeText(this, "Dossier ajouté. Lancez Scanner depuis Options pour actualiser la bibliothèque.", Toast.LENGTH_LONG).show();
         }
