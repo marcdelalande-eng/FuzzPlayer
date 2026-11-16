@@ -58,6 +58,13 @@ public class TagEditorActivity extends Activity {
         back.setOnClickListener(v -> finish());
         page.addView(back);
         setContentView(page);
+        page.setOnApplyWindowInsetsListener((view, insets) -> {
+            android.graphics.Insets bars = insets.getInsets(
+                    android.view.WindowInsets.Type.systemBars() | android.view.WindowInsets.Type.displayCutout());
+            view.setPadding(20 + bars.left, 24 + bars.top, 20 + bars.right, 20 + bars.bottom);
+            return insets;
+        });
+        page.requestApplyInsets();
         reload();
     }
 
