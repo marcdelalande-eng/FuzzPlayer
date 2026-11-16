@@ -361,6 +361,11 @@ public class MainActivity extends Activity {
             Toast.makeText(this, "Dossier ajouté. Lancez Scanner depuis Options pour actualiser la bibliothèque.", Toast.LENGTH_LONG).show();
         }
     }
+    @Override protected void onRestart() {
+        super.onRestart();
+        loadSavedLibrary(); // Refresh displayed tags after returning from the editor.
+    }
+
     @Override protected void onStart() {
         super.onStart();
         SessionToken token = new SessionToken(this, new ComponentName(this, PlaybackService.class));
@@ -409,6 +414,12 @@ public class MainActivity extends Activity {
         Log.e("FUZZ_DIAG", "MainActivity.onResume");
         meterHandler.removeCallbacks(meterTick);
         meterHandler.post(meterTick);
+    }
+
+    @Override public void onBackPressed() {
+        View drawer = findViewById(R.id.sideDrawer);
+        if (drawer != null && drawer.getVisibility() == View.VISIBLE) drawer.setVisibility(View.GONE);
+        else super.onBackPressed();
     }
 
     @Override protected void onDestroy() { executor.shutdownNow(); super.onDestroy(); }
