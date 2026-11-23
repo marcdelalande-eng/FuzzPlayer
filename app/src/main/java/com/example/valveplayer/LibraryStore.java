@@ -10,6 +10,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 /** Persistent snapshot of the last explicitly scanned library. */
@@ -47,7 +48,17 @@ public final class LibraryStore {
         return tracks;
     }
 
-    public static synchronized boolean save(Context context, List<Track> tracks) {
+    private static String safe(String s) { return s == null ? "" : s; }
+
+    public static synchronized boolean save(Context context, List<Track> input) {
+        // CORRECTIF : l'écran principal regroupe les albums par pistes CONSÉCUTIVES. Après une édition
+        // de tags (album renommé), la liste n'était plus triée : un album pouvait apparaître en plusieurs
+        // morceaux et le service de lecture sautait mal d'un album à l'autre. On retrie donc toujours
+        // avec le même ordre que le scanner (album, numéro de piste, titre).
+        List<Track> tracks = new ArrayList<>(input);
+        tracks.sort(Comparator.comparing((Track t) -> safe(t.album), String.CASE_INSENSITIVE_ORDER)
+                .thenComparingInt(t -> t.trackNo)
+                .thenComparing(t -> safe(t.title), String.CASE_INSENSITIVE_ORDER));
         JSONArray data = new JSONArray();
         try {
             for (Track t : tracks) {

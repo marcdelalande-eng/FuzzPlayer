@@ -7,6 +7,8 @@ import androidx.media3.common.util.UnstableApi;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
+import androidx.media3.common.AudioAttributes;
+import androidx.media3.common.C;
 import androidx.media3.common.MediaItem;
 import androidx.media3.common.MediaMetadata;
 import androidx.media3.common.Player;
@@ -50,7 +52,8 @@ public class PlaybackService extends MediaSessionService {
     };
     private final Runnable positionSaver = new Runnable() {
         @Override public void run() {
-            savePlaybackPosition();
+            // CORRECTIF : inutile d'écrire les préférences toutes les 5 s quand rien ne joue.
+            if (player != null && player.isPlaying()) savePlaybackPosition();
             main.postDelayed(this, 5000);
         }
     };
@@ -66,7 +69,17 @@ public class PlaybackService extends MediaSessionService {
         super.onCreate();
         Diagnostics.install(this);
         Diagnostics.log("SERVICE", "onCreate");
-        player = new ExoPlayer.Builder(this).build();
+        // CORRECTIF : sans AudioAttributes + handleAudioFocus, le lecteur ne demande jamais le focus audio
+        // (il joue par-dessus le GPS/les appels et ne se met pas en pause), et sans
+        // setHandleAudioBecomingNoisy il continue sur le haut-parleur quand le casque/Bluetooth se déconnecte.
+        AudioAttributes audioAttributes = new AudioAttributes.Builder()
+                .setUsage(C.USAGE_MEDIA)
+                .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
+                .build();
+        player = new ExoPlayer.Builder(this)
+                .setAudioAttributes(audioAttributes, true)
+                .setHandleAudioBecomingNoisy(true)
+                .build();
         player.setShuffleModeEnabled(Prefs.isShuffle(this));
         main.postDelayed(positionSaver, 5000);
         mediaSession = new MediaSession.Builder(this, player).setCallback(new MediaSession.Callback() {

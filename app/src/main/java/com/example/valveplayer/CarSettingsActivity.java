@@ -6,7 +6,10 @@ import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothManager;
 import android.content.pm.PackageManager;
+import android.graphics.Insets;
 import android.os.Bundle;
+import android.view.View;
+import android.view.WindowInsets;
 import android.widget.CheckBox;
 import android.widget.LinearLayout;
 import android.widget.Switch;
@@ -21,6 +24,15 @@ public class CarSettingsActivity extends Activity {
     private final Set<String> selected = new HashSet<>();
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b); setContentView(R.layout.activity_settings);
+        // CORRECTIF : avec targetSdk 35 l'affichage est bord à bord ; sans marges, le titre passait
+        // sous la barre d'état et le bouton « Retour » sous la barre de navigation.
+        View content = findViewById(android.R.id.content);
+        content.setOnApplyWindowInsetsListener((view, insets) -> {
+            Insets bars = insets.getInsets(WindowInsets.Type.systemBars() | WindowInsets.Type.displayCutout());
+            view.setPadding(bars.left, bars.top, bars.right, bars.bottom);
+            return insets;
+        });
+        content.requestApplyInsets();
         selected.addAll(Prefs.carDevices(this));
         Switch auto = findViewById(R.id.switchAuto), manual = findViewById(R.id.switchManualCar);
         auto.setChecked(Prefs.isAutoCar(this)); manual.setChecked(Prefs.isCarMode(this));
@@ -40,7 +52,11 @@ public class CarSettingsActivity extends Activity {
     private void populate() {
         LinearLayout box = findViewById(R.id.deviceContainer); box.removeAllViews();
         if (checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
-            TextView t = new TextView(this); t.setText("Autorisation Bluetooth requise. Retourne à l'écran principal pour l'accorder."); t.setTextColor(getColor(R.color.amp_cream)); box.addView(t); return;
+            // CORRECTIF : l'ancien message renvoyait vers « l'écran principal », qui ne demande jamais
+            // cette autorisation. Elle se redemande ici à chaque ouverture, ou se donne dans les réglages Android.
+            TextView t = new TextView(this);
+            t.setText("Autorisation Bluetooth requise. Rouvrez cet écran pour la redemander, ou accordez-la dans Réglages Android > Applications > FuzzPlayer > Autorisations.");
+            t.setTextColor(getColor(R.color.amp_cream)); box.addView(t); return;
         }
         BluetoothManager bm = getSystemService(BluetoothManager.class); BluetoothAdapter a = bm == null ? null : bm.getAdapter();
         if (a == null) { TextView t = new TextView(this); t.setText("Bluetooth indisponible."); t.setTextColor(getColor(R.color.amp_cream)); box.addView(t); return; }
